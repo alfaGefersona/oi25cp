@@ -30,7 +30,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  socket_io_client: ^3.0.0
+  app_settings: ^5.1.1
+  wifi_iot: ^0.3.19
+  permission_handler: ^11.3.0
+  web_socket_channel: ^3.0.1
+
+
 
 
   # The following adds the Cupertino Icons font to your application.

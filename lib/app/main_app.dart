@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../features/connection/presentation/pages/wifi_connect_page.dart';
 import '../features/connection/presentation/pages/wifi_socket_page.dart';
 import '../features/explore/presentation/explore_page.dart';
 import '../features/home/presentation/home_page.dart';
@@ -14,7 +15,7 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   int index = 0;
-  final pages = const [HomePage(), ExplorePage(), TrainingPage(), WifiSocketPage()];
+  final pages = const [HomePage(), TrainingPage(), WifiConnectPage(), WifiSocketPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +26,9 @@ class _MainAppState extends State<MainApp> {
         onTap: (i) => setState(() => index = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.travel_explore), label: "Explore"),
           BottomNavigationBarItem(icon: Icon(Icons.sports_tennis), label: "Treinos"),
           BottomNavigationBarItem(icon: Icon(Icons.wifi), label: "Wi-Fi"),
+          BottomNavigationBarItem(icon: Icon(Icons.wifi), label: "TesteSocket"),
         ],
       ),
     );
