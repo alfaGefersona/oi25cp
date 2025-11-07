@@ -51,24 +51,22 @@ class _WifiSocketPageState extends State<WifiSocketPage> {
     }
   }
 
+  int _selectedMotor = 1; // motor padrão
+
   void _sendCommand(String direction) {
     if (_socket == null || !_connected) {
-      setState(() {
-        _log += 'Não conectado ao ESP32\n';
-      });
+      setState(() => _log += 'Não conectado ao ESP32\n');
       return;
     }
 
     final command = jsonEncode({
-      'motor': 1,
+      'motor': _selectedMotor, // número do motor
       'direction': direction,
       'speed': _speed.toInt(),
     });
 
     _socket!.write(command);
-    setState(() {
-      _log += 'Enviado: $command\n';
-    });
+    setState(() => _log += 'Enviado: $command\n');
   }
 
   void _disconnect() {
@@ -112,7 +110,25 @@ class _WifiSocketPageState extends State<WifiSocketPage> {
             ),
             const SizedBox(height: 16),
 
-            // Controle de velocidade
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Motor:'),
+                const SizedBox(width: 8),
+                DropdownButton<int>(
+                  value: _selectedMotor,
+                  items: const [
+                    DropdownMenuItem(value: 1, child: Text('Motor A')),
+                    DropdownMenuItem(value: 2, child: Text('Motor B')),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedMotor = value!);
+                  },
+                ),
+              ],
+            ),
+
+            // Controle de velocidade,
             Row(
               children: [
                 IconButton(
@@ -170,18 +186,26 @@ class _WifiSocketPageState extends State<WifiSocketPage> {
                   ),
                   label: const Text('Parar'),
                 ),
+                ElevatedButton.icon(
+                  onPressed: _connected ? () => _sendCommand('stop_all') : null,
+                  icon: const Icon(Icons.power_settings_new),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black87,
+                  ),
+                  label: const Text('Parar Tudo'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _connected ? _disconnect : _connect,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                    _connected ? Colors.redAccent : Colors.green,
+                  ),
+                  child: Text(_connected ? 'Desconectar' : 'Conectar'),
+                ),
               ],
             ),
 
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _connected ? _disconnect : _connect,
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                _connected ? Colors.redAccent : Colors.green,
-              ),
-              child: Text(_connected ? 'Desconectar' : 'Conectar'),
-            ),
             const Divider(height: 20),
 
             Expanded(
