@@ -13,7 +13,7 @@ class _WifiSocketPageState extends State<WifiSocketPage> {
   Socket? _socket;
   bool _connected = false;
   String _log = '';
-  double _speed = 128; // velocidade inicial
+  double _speed = 128;
 
   Future<void> _connect() async {
     try {
@@ -51,22 +51,22 @@ class _WifiSocketPageState extends State<WifiSocketPage> {
     }
   }
 
-  int _selectedMotor = 1; // motor padrão
+  int _selectedMotor = 1;
 
   void _sendCommand(String direction) {
     if (_socket == null || !_connected) {
-      setState(() => _log += 'Não conectado ao ESP32\n');
+      setState(() => _log += 'N CONECTADO AO ESP\n');
       return;
     }
 
     final command = jsonEncode({
-      'motor': _selectedMotor, // número do motor
+      'motor': _selectedMotor,
       'direction': direction,
       'speed': _speed.toInt(),
     });
 
     _socket!.write(command);
-    setState(() => _log += 'Enviado: $command\n');
+    setState(() => _log += 'enviado: $command\n');
   }
 
   void _disconnect() {
@@ -120,6 +120,8 @@ class _WifiSocketPageState extends State<WifiSocketPage> {
                   items: const [
                     DropdownMenuItem(value: 1, child: Text('Motor A')),
                     DropdownMenuItem(value: 2, child: Text('Motor B')),
+                    DropdownMenuItem(value: 3, child: Text('Motor C')),
+                    DropdownMenuItem(value: 4, child: Text('Motor D')),
                   ],
                   onChanged: (value) {
                     setState(() => _selectedMotor = value!);
