@@ -15,7 +15,7 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   int index = 0;
-  final pages = const [HomePage(), TrainingPage(), WifiConnectPage(), WifiSocketPage()];
+  final pages = const [TrainingPage(), WifiConnectPage(), WifiSocketPage()];
 
   @override
   Widget build(BuildContext context) {
@@ -25,10 +25,9 @@ class _MainAppState extends State<MainApp> {
         currentIndex: index,
         onTap: (i) => setState(() => index = i),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.sports_tennis), label: "Treinos"),
           BottomNavigationBarItem(icon: Icon(Icons.wifi), label: "Wi-Fi"),
-          BottomNavigationBarItem(icon: Icon(Icons.wifi), label: "TesteSocket"),
+          BottomNavigationBarItem(icon: Icon(Icons.build), label: "TesteSocket"),
         ],
       ),
     );
