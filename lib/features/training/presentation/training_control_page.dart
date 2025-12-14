@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:oi25cp/features/connection/service/esp_socket_service.dart';
 import 'package:oi25cp/features/training/data/training_storage.dart';
 
+enum FeederMode {
+  bolinhasPorSegundo,
+  umaBolinhaPorIntervalo,
+}
+
 class TrainingControlPage extends StatefulWidget {
   final String trainingKey;
 
@@ -11,44 +16,63 @@ class TrainingControlPage extends StatefulWidget {
   State<TrainingControlPage> createState() => _TrainingControlPageState();
 }
 
-class _TrainingControlPageState extends State<TrainingControlPage> {
+class _TrainingControlPageState extends State<TrainingControlPage>
+    with SingleTickerProviderStateMixin {
   double motor1 = 0;
   double motor2 = 0;
   double motor3 = 0;
-  double motor4 = 0;
+  double motor4 = 1;
 
-  bool trainingStarted = false;
+  double feederIntervalSeconds = 1;
+  FeederMode feederMode = FeederMode.bolinhasPorSegundo;
+
   bool editing = false;
+  bool trainingStarted = false;
+  bool launchersOn = false;
+  bool feederOn = false;
 
-  final esp = EspSocketService();
+  late AnimationController pulse;
 
+  final EspSocketService esp = EspSocketService();
   late TrainingStorage storage;
 
   @override
   void initState() {
     super.initState();
     storage = TrainingStorage(widget.trainingKey);
+
+    pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
     _connect();
     _load();
   }
 
+  @override
+  void dispose() {
+    pulse.dispose();
+    super.dispose();
+  }
+
   Future<void> _connect() async {
-    try {
-      await esp.connect();
-      print("Conectado ao ESP");
-    } catch (e) {
-      print("Erro: $e");
-    }
+    await esp.connect();
   }
 
   Future<void> _load() async {
     final data = await storage.load();
 
     setState(() {
-      motor1 = data['motor1']!;
-      motor2 = data['motor2']!;
-      motor3 = data['motor3']!;
-      motor4 = data['motor4']!;
+      motor1 = (data['motor1'] as double);
+      motor2 = (data['motor2'] as double);
+      motor3 = (data['motor3'] as double);
+      motor4 = (data['motor4'] as double).clamp(0, 8);
+      feederMode = FeederMode.values[
+      data['feederMode'] as int
+      ];
+      feederIntervalSeconds =
+      (data['feederIntervalSeconds'] as double);
     });
   }
 
@@ -58,46 +82,87 @@ class _TrainingControlPageState extends State<TrainingControlPage> {
       motor2: motor2,
       motor3: motor3,
       motor4: motor4,
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Treino salvo com sucesso!')),
+      feederModeIndex: feederMode.index,
+      feederIntervalSeconds: feederIntervalSeconds,
     );
   }
 
+
   Future<void> _startTraining() async {
     setState(() => trainingStarted = true);
+    pulse.repeat(reverse: true);
 
-    await esp.sendMotor(1, motor1.toInt());
-    await Future.delayed(const Duration(milliseconds: 1000));
+    esp.sendMotor(1, motor1.toInt());
+    esp.sendMotor(2, motor2.toInt());
 
-    await esp.sendMotor(2, motor2.toInt());
-    await Future.delayed(const Duration(milliseconds: 1000));
+    esp.sendMotor(3, motor3.toInt());
 
-    await esp.sendMotor(3, motor3.toInt());
-    await Future.delayed(const Duration(milliseconds: 1000));
+    _startFeeder();
 
-    await esp.sendMotor(4, motor4.toInt());
+    setState(() {
+      launchersOn = true;
+      feederOn = true;
+    });
   }
 
   Future<void> _stopTraining() async {
     esp.stopAll();
-    setState(() => trainingStarted = false);
+    pulse.stop();
+
+    setState(() {
+      trainingStarted = false;
+      launchersOn = false;
+      feederOn = false;
+    });
   }
 
-  Widget _buildMotorSlider(String label, double value, ValueChanged<double> onChange) {
+  Future<void> _startFeeder() async {
+    if (feederMode == FeederMode.bolinhasPorSegundo) {
+     esp.sendFeederBolinhas(motor4.toInt());
+    } else {
+      esp.sendFeederIntervalo(
+        (feederIntervalSeconds * 1000).toInt(),
+      );
+    }
+  }
+
+  Future<void> _toggleLaunchers() async {
+    if (launchersOn) {
+      esp.sendMotor(1, 0);
+      esp.sendMotor(2, 0);
+      esp.sendMotor(3, 0);
+    } else {
+      esp.sendMotor(1, motor1.toInt());
+      esp.sendMotor(2, motor2.toInt());
+      esp.sendMotor(3, motor3.toInt());
+    }
+
+    setState(() => launchersOn = !launchersOn);
+  }
+
+
+  Future<void> _toggleFeeder() async {
+    if (feederOn) {
+      esp.sendMotor(4, 0);
+    } else {
+      await _startFeeder();
+    }
+
+    setState(() => feederOn = !feederOn);
+  }
+
+  Widget slider(String label, double value, double max, ValueChanged<double> onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("$label: ${value.toInt()}", style: const TextStyle(fontSize: 16)),
+        Text("$label: ${value.toInt()}"),
         Slider(
           value: value,
           min: 0,
-          max: 255,
-          divisions: 255,
-          onChanged: editing ? onChange : null,
+          max: max,
+          divisions: max.toInt(),
+          onChanged: onChanged,
         ),
-        const SizedBox(height: 10),
       ],
     );
   }
@@ -106,85 +171,98 @@ class _TrainingControlPageState extends State<TrainingControlPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Configurar treino - ${widget.trainingKey}"),
+        title: Text("Treino ${widget.trainingKey}"),
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == "editar") {
-                setState(() => editing = true);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: "editar",
-                child: Text("Habilitar edição"),
-              ),
-            ],
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () => setState(() => editing = true),
           ),
         ],
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: editing
+            ? Column(
           children: [
-            _buildMotorSlider("Motor A", motor1, (v) => setState(() => motor1 = v)),
-            _buildMotorSlider("Motor B", motor2, (v) => setState(() => motor2 = v)),
-            _buildMotorSlider("Motor C", motor3, (v) => setState(() => motor3 = v)),
-            _buildMotorSlider("Motor D (Stepper)", motor4, (v) => setState(() => motor4 = v)),
-
-            const SizedBox(height: 25),
-
-            if (!editing) ...[
-              if (!trainingStarted)
-                ElevatedButton(
-                  onPressed: _startTraining,
-                  style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 55)),
-                  child: const Text("INICIAR TREINO"),
-                )
-              else
-                ElevatedButton(
-                  onPressed: _stopTraining,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 55),
-                    backgroundColor: Colors.red,
-                  ),
-                  child: const Text("PARAR TREINO", style: TextStyle(color: Colors.white)),
+            slider("Motor A", motor1, 255, (v) => setState(() => motor1 = v)),
+            slider("Motor B", motor2, 255, (v) => setState(() => motor2 = v)),
+            slider("Motor C", motor3, 255, (v) => setState(() => motor3 = v)),
+            ToggleButtons(
+              isSelected: [
+                feederMode == FeederMode.bolinhasPorSegundo,
+                feederMode == FeederMode.umaBolinhaPorIntervalo,
+              ],
+              onPressed: (i) {
+                setState(() {
+                  feederMode = FeederMode.values[i];
+                });
+              },
+              children: const [
+                Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Text("Bolinhas/s"),
                 ),
-            ] else ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        await _save();
-                        setState(() => editing = false);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        minimumSize: const Size(double.infinity, 55),
-                      ),
-                      child: const Text("SALVAR", style: TextStyle(color: Colors.white)),
-                    ),
+                Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Text("1 bolinha / X s"),
+                ),
+              ],
+            ),
+            feederMode == FeederMode.bolinhasPorSegundo
+                ? slider("Alimentador", motor4, 8, (v) => setState(() => motor4 = v))
+                : slider("Intervalo (s)", feederIntervalSeconds, 10,
+                    (v) => setState(() => feederIntervalSeconds = v)),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await _save();
+                      setState(() => editing = false);
+                    },
+                    child: const Text("SALVAR"),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        setState(() => editing = false);
-                        _load(); // restaura valores do storage
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey,
-                        minimumSize: const Size(double.infinity, 55),
-                      ),
-                      child: const Text("CANCELAR", style: TextStyle(color: Colors.white)),
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _load();
+                      setState(() => editing = false);
+                    },
+                    child: const Text("CANCELAR"),
                   ),
-                ],
+                ),
+              ],
+            ),
+          ],
+        )
+            : Column(
+          children: [
+            ScaleTransition(
+              scale: trainingStarted
+                  ? Tween(begin: 1.0, end: 1.05).animate(pulse)
+                  : const AlwaysStoppedAnimation(1),
+              child: Card(
+                child: ListTile(
+                  title: Text(
+                    trainingStarted ? "TREINO EM ANDAMENTO" : "TREINO PARADO",
+                  ),
+                ),
               ),
-            ],
+            ),
+            ElevatedButton(
+              onPressed: trainingStarted ? _stopTraining : _startTraining,
+              child: Text(trainingStarted ? "PARAR TREINO" : "INICIAR TREINO"),
+            ),
+            ElevatedButton(
+              onPressed: _toggleLaunchers,
+              child: Text(launchersOn ? "DESLIGAR LANÇADORES" : "LIGAR LANÇADORES"),
+            ),
+            ElevatedButton(
+              onPressed: _toggleFeeder,
+              child: Text(feederOn ? "DESLIGAR ALIMENTADOR" : "LIGAR ALIMENTADOR"),
+            ),
           ],
         ),
       ),

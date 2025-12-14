@@ -1,8 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- ✅ Permissões necessárias para Wi-Fi -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -23,12 +23,10 @@
                 android:hardwareAccelerated="true"
                 android:windowSoftInputMode="adjustResize">
 
-            <!-- Tema visível enquanto o Flutter é carregado -->
             <meta-data
                     android:name="io.flutter.embedding.android.NormalTheme"
                     android:resource="@style/NormalTheme" />
 
-            <!-- Ponto de entrada da aplicação -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -36,14 +34,12 @@
 
         </activity>
 
-        <!-- ⚙️ Requerido pelo Flutter -->
         <meta-data
                 android:name="flutterEmbedding"
                 android:value="2" />
 
     </application>
 
-    <!-- 🔎 Necessário para visibilidade de intent PROCESS_TEXT -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />

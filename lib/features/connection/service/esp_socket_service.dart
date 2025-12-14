@@ -7,63 +7,48 @@ class EspSocketService {
   EspSocketService._internal();
 
   Socket? _socket;
-  bool get isConnected => _socket != null;
 
   Future<void> connect() async {
-    if (_socket != null) {
-      try {
-        _socket!.destroy();
-      } catch (_) {}
-      _socket = null;
-    }
-
+    _socket?.destroy();
     _socket = await Socket.connect("192.168.4.1", 8080);
-    _socket!.listen(
-          (data) {
-        final msg = utf8.decode(data);
-        print('[ESP] $msg');
-      },
-      onDone: () {
-        print('[ESP] conexão encerrada');
-        _socket = null;
-      },
-      onError: (e) {
-        print('[ESP] erro no socket: $e');
-        _socket = null;
-      },
-    );
   }
 
-  Future<void>  sendMotor(int motor, int speed) async{
-    if (_socket == null) {
-      print('[ESP] sendMotor chamado sem conexão');
-      return;
-    }
+  void _send(Map<String, dynamic> cmd) {
+    if (_socket == null) return;
+    _socket!.write('${jsonEncode(cmd)}\n');
+  }
 
-    final cmd = jsonEncode({
+  // Motores DC
+  void sendMotor(int motor, int speed) {
+    _send({
       "motor": motor,
-      "direction": "forward",
+      "direction": speed > 0 ? "forward" : "stop",
       "speed": speed,
     });
+  }
 
-    print('[ESP] >> $cmd');
-    _socket!.write('$cmd\n');
-    await _socket!.flush();
+  // Alimentador - bolinhas por segundo
+  void sendFeederBolinhas(int bolinhas) {
+    _send({
+      "motor": 4,
+      "direction": bolinhas > 0 ? "forward" : "stop",
+      "bolinhas": bolinhas,
+    });
+  }
+
+  // Alimentador - 1 bolinha a cada X ms
+  void sendFeederIntervalo(int intervaloMs) {
+    _send({
+      "motor": 4,
+      "direction": intervaloMs > 0 ? "forward" : "stop",
+      "intervalo_ms": intervaloMs,
+    });
   }
 
   void stopAll() {
-    if (_socket == null) {
-      print('[ESP] stopAll chamado sem conexão');
-      return;
-    }
-
-    final cmd = jsonEncode({
+    _send({
       "motor": 0,
       "direction": "stop_all",
-      "speed": 0,
     });
-
-    print('[ESP] >> $cmd');
-    _socket!.write('$cmd\n');
   }
 }
