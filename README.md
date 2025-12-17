@@ -201,14 +201,21 @@ This project was developed as part of the **Integration Workshop** course, with 
 
 ---
 
-## 👨‍💻 Authors
-
-Developed by students of the **Integration Workshop** course.  
-Repository maintained by **alfaGefersona**.
-
----
-
 ## 📄 License
 
 This project is intended for **academic and educational use only**.  
 Please contact the author for commercial use or redistribution.
+
+
+## 👨‍💻 Authors
+
+Developed by students of the **Integration Workshop** course.
+
+This project was developed and maintained with contributions from:
+
+- **[@alfaGefersona](https://github.com/alfaGefersona)**
+- **[@Tarsa-Reis](https://github.com/Tarsa-Reis)**
+- **[@alfamatheuso](https://github.com/alfamatheuso)**
+- **[@AlexandreMC23](https://github.com/AlexandreMC23)**
+
+Thank you for your contributions and support in making this project possible! 🚀
